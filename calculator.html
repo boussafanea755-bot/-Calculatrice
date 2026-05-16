@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CalcJava — Calculator</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@300;500;700&display=swap');
+
+  :root {
+    --bg: #0a0c10;
+    --surface: #111318;
+    --border: #1e2430;
+    --accent: #00e5ff;
+    --accent2: #ff3d71;
+    --accent3: #a259ff;
+    --text: #e0f7fa;
+    --muted: #455a64;
+    --btn-bg: #141820;
+    --btn-hover: #1c2230;
+    --btn-active: #0d1118;
+    --display-bg: #07090d;
+    --glow: 0 0 18px rgba(0,229,255,0.18);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Rajdhani', sans-serif;
+    overflow: hidden;
+  }
+
+  /* Animated grid background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,229,255,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,229,255,0.04) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    animation: gridShift 20s linear infinite;
+  }
+
+  @keyframes gridShift {
+    0% { transform: translateY(0); }
+    100% { transform: translateY(40px); }
+  }
+
+  .wrapper {
+    position: relative;
+    z-index: 1;
+  }
+
+  .calc {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 24px;
+    width: 320px;
+    box-shadow:
+      0 0 0 1px rgba(0,229,255,0.08),
+      0 32px 64px rgba(0,0,0,0.6),
+      0 0 80px rgba(0,229,255,0.04);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .calc::before {
+    content: '';
+    position: absolute;
+    top: -1px; left: 20%; right: 20%;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    opacity: 0.6;
+  }
+
+  /* Display */
+  .display {
+    background: var(--display-bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 18px 12px;
+    margin-bottom: 20px;
+    min-height: 96px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    align-items: flex-end;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .display::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(0,229,255,0.03) 0%, transparent 60%);
+    pointer-events: none;
+  }
+
+  .display .expression {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 12px;
+    color: var(--muted);
+    min-height: 18px;
+    letter-spacing: 1px;
+    transition: all 0.2s;
+    word-break: break-all;
+    text-align: right;
+  }
+
+  .display .result {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 36px;
+    color: var(--text);
+    letter-spacing: 2px;
+    transition: all 0.15s;
+    word-break: break-all;
+    text-align: right;
+    line-height: 1.1;
+    text-shadow: 0 0 20px rgba(0,229,255,0.3);
+  }
+
+  .display .result.animate {
+    animation: pop 0.15s ease;
+  }
+
+  @keyframes pop {
+    0% { transform: scale(0.97); opacity: 0.7; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+
+  /* Buttons grid */
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+  }
+
+  button {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 18px;
+    font-weight: 500;
+    letter-spacing: 1px;
+    background: var(--btn-bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    height: 58px;
+    cursor: pointer;
+    transition: background 0.12s, transform 0.08s, box-shadow 0.12s, border-color 0.12s;
+    position: relative;
+    overflow: hidden;
+    outline: none;
+  }
+
+  button::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--accent);
+    opacity: 0;
+    transition: opacity 0.15s;
+    border-radius: inherit;
+  }
+
+  button:hover {
+    background: var(--btn-hover);
+    border-color: rgba(0,229,255,0.2);
+    box-shadow: 0 0 12px rgba(0,229,255,0.08);
+  }
+
+  button:active {
+    background: var(--btn-active);
+    transform: scale(0.95);
+  }
+
+  button:active::after { opacity: 0.05; }
+
+  /* Operator buttons */
+  button.op {
+    color: var(--accent);
+    border-color: rgba(0,229,255,0.15);
+    font-size: 22px;
+  }
+  button.op:hover {
+    background: rgba(0,229,255,0.07);
+    border-color: rgba(0,229,255,0.35);
+    box-shadow: 0 0 16px rgba(0,229,255,0.12);
+  }
+
+  /* Clear / delete */
+  button.clear {
+    color: var(--accent2);
+    border-color: rgba(255,61,113,0.15);
+    font-weight: 700;
+    letter-spacing: 2px;
+    font-size: 13px;
+  }
+  button.clear:hover {
+    background: rgba(255,61,113,0.07);
+    border-color: rgba(255,61,113,0.35);
+    box-shadow: 0 0 16px rgba(255,61,113,0.12);
+  }
+
+  button.del {
+    color: var(--accent2);
+    border-color: rgba(255,61,113,0.1);
+    font-size: 20px;
+  }
+  button.del:hover {
+    background: rgba(255,61,113,0.05);
+    border-color: rgba(255,61,113,0.25);
+  }
+
+  /* Equal button */
+  button.eq {
+    background: linear-gradient(135deg, rgba(0,229,255,0.15), rgba(162,89,255,0.15));
+    color: var(--accent);
+    border-color: rgba(0,229,255,0.3);
+    font-size: 24px;
+    font-weight: 700;
+    box-shadow: 0 0 20px rgba(0,229,255,0.1);
+  }
+  button.eq:hover {
+    background: linear-gradient(135deg, rgba(0,229,255,0.25), rgba(162,89,255,0.25));
+    border-color: var(--accent);
+    box-shadow: 0 0 30px rgba(0,229,255,0.2);
+  }
+
+  /* Span 2 cols */
+  button.span2 { grid-column: span 2; }
+
+  /* Special function buttons */
+  button.fn {
+    color: var(--accent3);
+    border-color: rgba(162,89,255,0.15);
+    font-size: 14px;
+    letter-spacing: 0;
+  }
+  button.fn:hover {
+    background: rgba(162,89,255,0.07);
+    border-color: rgba(162,89,255,0.35);
+  }
+
+  /* Ripple effect */
+  .ripple {
+    position: absolute;
+    border-radius: 50%;
+    width: 5px; height: 5px;
+    background: rgba(0,229,255,0.4);
+    transform: scale(0);
+    animation: ripple 0.5s linear;
+    pointer-events: none;
+  }
+  @keyframes ripple {
+    to { transform: scale(30); opacity: 0; }
+  }
+
+  
+</style>
+</head>
+<body>
+<div class="wrapper">
+  
+  <div class="calc">
+    <div class="display">
+      <div class="expression" id="expr"></div>
+      <div class="result" id="result">0</div>
+    </div>
+    <div class="grid">
+      <!-- Row 1 -->
+      <button class="fn" onclick="action('sqrt')">√</button>
+      <button class="fn" onclick="action('pow')">xʸ</button>
+      <button class="fn" onclick="action('%')">%</button>
+      <button class="del" onclick="action('del')">⌫</button>
+      <!-- Row 2 -->
+      <button class="clear span2" onclick="action('ac')">AC</button>
+      <button class="op" onclick="append('(')">(</button>
+      <button class="op" onclick="append(')')">)</button>
+      <!-- Row 3 -->
+      <button onclick="append('7')">7</button>
+      <button onclick="append('8')">8</button>
+      <button onclick="append('9')">9</button>
+      <button class="op" onclick="append('/')">÷</button>
+      <!-- Row 4 -->
+      <button onclick="append('4')">4</button>
+      <button onclick="append('5')">5</button>
+      <button onclick="append('6')">6</button>
+      <button class="op" onclick="append('*')">×</button>
+      <!-- Row 5 -->
+      <button onclick="append('1')">1</button>
+      <button onclick="append('2')">2</button>
+      <button onclick="append('3')">3</button>
+      <button class="op" onclick="append('-')">−</button>
+      <!-- Row 6 -->
+      <button onclick="append('0')">0</button>
+      <button onclick="append('.')">.</button>
+      <button class="eq" onclick="action('eq')">=</button>
+      <button class="op" onclick="append('+')">+</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  let expr = '';
+  let lastResult = false;
+
+  const exprEl = document.getElementById('expr');
+  const resultEl = document.getElementById('result');
+
+  function display(val) {
+    resultEl.classList.remove('animate');
+    void resultEl.offsetWidth;
+    resultEl.textContent = val;
+    resultEl.classList.add('animate');
+  }
+
+  function append(ch) {
+    if (lastResult && !isNaN(ch) ) { expr = ''; }
+    if (lastResult && ch === '.') { expr = '0'; }
+    lastResult = false;
+    expr += ch;
+    exprEl.textContent = expr
+      .replace(/\*/g,'×')
+      .replace(/\//g,'÷')
+      .replace(/-/g,'−');
+    display(ch === '/' ? '÷' : ch === '*' ? '×' : ch === '-' ? '−' : ch);
+  }
+
+  function action(type) {
+    if (type === 'ac') {
+      expr = '';
+      exprEl.textContent = '';
+      display('0');
+      lastResult = false;
+    } else if (type === 'del') {
+      expr = expr.slice(0, -1);
+      exprEl.textContent = expr
+        .replace(/\*/g,'×')
+        .replace(/\//g,'÷')
+        .replace(/-/g,'−');
+      display(expr.slice(-1) || '0');
+    } else if (type === 'eq') {
+      try {
+        let evalExpr = expr;
+        let res = Function('"use strict"; return (' + evalExpr + ')')();
+        // Round floating point
+        res = parseFloat(res.toPrecision(12));
+        exprEl.textContent = expr
+          .replace(/\*/g,'×')
+          .replace(/\//g,'÷')
+          .replace(/-/g,'−') + ' =';
+        expr = String(res);
+        display(res);
+        lastResult = true;
+      } catch(e) {
+        display('ERR');
+        expr = '';
+      }
+    } else if (type === 'sqrt') {
+      try {
+        let val = Function('"use strict"; return (' + (expr||'0') + ')')();
+        let res = parseFloat(Math.sqrt(val).toPrecision(12));
+        exprEl.textContent = '√(' + expr + ') =';
+        expr = String(res);
+        display(res);
+        lastResult = true;
+      } catch(e) { display('ERR'); expr=''; }
+    } else if (type === 'pow') {
+      expr += '**';
+      exprEl.textContent = expr.replace(/\*\*/g, 'ˣ');
+      display('^');
+    } else if (type === '%') {
+      expr += '/100';
+      exprEl.textContent = expr.replace(/\/100/g,'%');
+      display('%');
+    }
+  }
+
+  // Ripple effect
+  document.querySelectorAll('button').forEach(btn => {
+    btn.addEventListener('click', function(e) {
+      const r = document.createElement('span');
+      r.className = 'ripple';
+      const rect = this.getBoundingClientRect();
+      r.style.left = (e.clientX - rect.left - 2.5) + 'px';
+      r.style.top  = (e.clientY - rect.top  - 2.5) + 'px';
+      this.appendChild(r);
+      setTimeout(() => r.remove(), 600);
+    });
+  });
+
+  // Keyboard support
+  document.addEventListener('keydown', e => {
+    if ('0123456789'.includes(e.key)) append(e.key);
+    else if ('+-*/'.includes(e.key)) append(e.key);
+    else if (e.key === '.') append('.');
+    else if (e.key === 'Enter' || e.key === '=') action('eq');
+    else if (e.key === 'Backspace') action('del');
+    else if (e.key === 'Escape') action('ac');
+    else if (e.key === '(' || e.key === ')') append(e.key);
+  });
+</script>
+</body>
+</html>
